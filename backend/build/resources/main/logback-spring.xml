@@ -1,0 +1,30 @@
+<configuration>
+    <!-- Spring Boot의 기본 로그 설정 포함 (콘솔 출력 등) -->
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+
+    <!-- Logstash로 로그를 전송하는 Appender 정의 -->
+    <appender name="stash" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <!-- 로그를 보낼 대상 (Logstash의 TCP 포트) -->
+        <destination>${LOGSTASH_HOST:-logstash}:${LOGSTASH_PORT:-5000}</destination>
+
+        <!-- 로그를 JSON 형태로 인코딩하기 위한 설정 -->
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <loggerName/>
+                <pattern>
+                    <pattern>
+                        {"service":"rimu-games","level":"%level"}
+                    </pattern>
+                </pattern>
+                <threadName/>
+                <message/>
+                <stackTrace/>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="stash"/>
+    </root>
+</configuration>
