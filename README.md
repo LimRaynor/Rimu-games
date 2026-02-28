@@ -203,3 +203,53 @@ docker-compose up --build
 - Logstash 연결 WARN 메시지는 ELK 스택 미실행 시 정상 출력되며 기능에 영향 없음
 - 프로필은 upsert 방식으로 동작 (없으면 생성, 있으면 수정)
 - 대시보드 팀원 목록은 로그인 없이도 접근 가능한 공개 API
+
+---
+
+## 개발 진행 기록
+
+### 완료된 작업
+
+#### Phase 1 — 프로젝트 초기 설정 ✅
+- 모노레포 구조 생성 (`backend/` · `frontend/` · `sql/` · `docker/`)
+- Spring Boot 3.5.10 프로젝트 초기화 (Gradle, Java 21)
+- Vue 3 + Vite + Pinia + Vue Router 프론트엔드 초기화
+- MariaDB `rimu_games` DB 및 `rimu` 계정 생성
+- `backend/.env` 환경변수 설정 완료
+- `sql/rimu_games_ddl.sql` 전체 스키마 작성
+
+#### Phase 2 — 백엔드 코어 ✅
+- CQRS 패키지 구조 적용 (command/query 분리)
+- **Auth**: 회원가입 · 로그인 · 로그아웃 · 리프레시 토큰 (JWT + HttpOnly 쿠키)
+- **User**: User 엔티티 + JPA 레포지토리
+- **Profile**: 프로필 upsert (`GET/PUT /api/profile/me`)
+- **Project**: 프로젝트 CRUD (`POST/PUT/DELETE/GET`)
+- **Dashboard**: MyBatis 쿼리 → 공개 팀원 목록 (`GET /api/dashboard/team`)
+- Security: JwtTokenProvider · JwtAuthFilter · CustomUserDetailsService · SecurityConfig
+- 공통: `ApiResponse<T>` · BusinessException · ErrorCode · GlobalExceptionHandler
+- 로깅: logback-spring.xml (ELK Logstash 어펜더 구성)
+
+#### Phase 3 — 프론트엔드 코어 ✅
+- Axios 인스턴스 + JWT 인터셉터 + 리프레시 로직 (`src/api/index.js`)
+- API 모듈: auth · profile · project · dashboard
+- Pinia 스토어: auth · profile · project
+- Vue Router (인증 가드 포함)
+- 페이지: LoginView · SignupView · DashboardView · ProfileView
+- 레이아웃: AppHeader
+
+#### Phase 4 — 인프라 설정 ✅
+- `docker-compose.yml` (백엔드 · 프론트엔드 · MariaDB · ELK · Prometheus)
+- `backend/Dockerfile` · `frontend/Dockerfile` · `frontend/nginx.conf`
+- `docker/prometheus/prometheus.yml`
+
+---
+
+### 예정된 작업
+
+- [ ] E2E 통합 테스트 (서버 실행 후 전체 플로우 검증)
+- [ ] 이미지 업로드 (프로필 아바타 · 프로젝트 썸네일)
+- [ ] 어드민 패널 (ADMIN 역할 기반 관리 페이지)
+- [ ] 프로젝트 상세 공개 페이지 (`/projects/:id`)
+- [ ] UI 디자인 · 반응형 레이아웃 · 토스트 알림
+- [ ] ELK · Grafana 연동 테스트
+- [ ] 프로덕션 배포
