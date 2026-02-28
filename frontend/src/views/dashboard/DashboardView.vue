@@ -1,154 +1,272 @@
 <template>
-  <div class="dashboard">
-    <div class="dashboard-header">
-      <h1>🎮 팀 소개</h1>
-      <p class="subtitle">Rimu Games 팀원들을 만나보세요</p>
-    </div>
+  <div class="dashboard-wrap" ref="wrapRef" @scroll="onScroll">
 
-    <div v-if="loading" class="loading">불러오는 중...</div>
-
-    <div v-else-if="teamMembers.length === 0" class="empty">
-      <p>아직 등록된 팀원이 없습니다.</p>
-    </div>
-
-    <div v-else class="team-grid">
-      <div
-        v-for="member in teamMembers"
-        :key="member.userId"
-        class="member-card card"
-      >
-        <div class="member-avatar">
-          <img
-            v-if="member.avatarUrl"
-            :src="member.avatarUrl"
-            :alt="member.nickname"
-          />
-          <div v-else class="avatar-placeholder">
-            {{ (member.name || member.nickname || '?').charAt(0).toUpperCase() }}
-          </div>
+    <!-- ── Fixed Header ── -->
+    <header class="dash-header">
+      <template v-if="!authStore.isLoggedIn">
+        <div class="header-auth">
+          <button class="btn-dash btn-login" @click="router.push('/login')">로그인</button>
+          <button class="btn-dash btn-signup" @click="router.push('/signup')">회원가입</button>
         </div>
-        <div class="member-info">
-          <h3 class="member-name">{{ member.name || member.nickname }}</h3>
-          <p v-if="member.role" class="member-role">{{ member.role }}</p>
-          <p v-if="member.bio" class="member-bio">{{ member.bio }}</p>
-          <div class="member-stats">
-            <span class="stat">프로젝트 {{ member.projectCount }}개</span>
-          </div>
+      </template>
+      <template v-else>
+        <div class="header-avatar" @click="router.push('/profile')">
+          {{ avatarInitial }}
         </div>
+      </template>
+    </header>
+
+    <!-- ── Page 1: 팀 소개 ── -->
+    <section class="page page-1">
+      <div class="team-logo">
+        <div class="logo-placeholder">RIMU<br>GAMES</div>
       </div>
-    </div>
+      <!-- STEP 3에서 채움 -->
+    </section>
+
+    <!-- ── Page 2: 프로젝트 카드 ── -->
+    <section class="page page-2">
+      <div class="team-logo">
+        <div class="logo-placeholder">RIMU<br>GAMES</div>
+      </div>
+      <!-- STEP 4에서 채움 -->
+    </section>
+
+    <!-- ── Page 3: 연락처 ── -->
+    <section class="page page-3">
+      <div class="team-logo">
+        <div class="logo-placeholder">RIMU<br>GAMES</div>
+      </div>
+      <!-- STEP 5에서 채움 -->
+    </section>
+
+    <!-- ── Fixed Bottom Nav ── -->
+    <nav class="page-nav">
+      <button class="nav-arrow" @click="prevPage" aria-label="이전">
+        <span class="arrow arrow-left"></span>
+      </button>
+      <div class="nav-dots">
+        <span
+          v-for="i in 3"
+          :key="i"
+          class="dot"
+          :class="{ active: currentPage === i - 1 }"
+          @click="goToPage(i - 1)"
+        />
+      </div>
+      <button class="nav-arrow" @click="nextPage" aria-label="다음">
+        <span class="arrow arrow-right"></span>
+      </button>
+    </nav>
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { dashboardApi } from '../../api/dashboard.js'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth.js'
 
-const teamMembers = ref([])
-const loading = ref(false)
+const router = useRouter()
+const authStore = useAuthStore()
+const wrapRef = ref(null)
+const currentPage = ref(0)
 
-onMounted(async () => {
-  loading.value = true
-  try {
-    teamMembers.value = await dashboardApi.getTeamMembers()
-  } catch (e) {
-    console.error('팀원 불러오기 실패:', e)
-  } finally {
-    loading.value = false
-  }
+const avatarInitial = computed(() => {
+  const name = authStore.user?.nickname || authStore.user?.email || '?'
+  return name.charAt(0).toUpperCase()
 })
+
+function goToPage(index) {
+  currentPage.value = index
+  wrapRef.value?.scrollTo({ top: index * window.innerHeight, behavior: 'smooth' })
+}
+
+function prevPage() {
+  if (currentPage.value > 0) goToPage(currentPage.value - 1)
+}
+
+function nextPage() {
+  if (currentPage.value < 2) goToPage(currentPage.value + 1)
+}
+
+let scrollTimeout = null
+function onScroll() {
+  clearTimeout(scrollTimeout)
+  scrollTimeout = setTimeout(() => {
+    const scrollTop = wrapRef.value?.scrollTop ?? 0
+    currentPage.value = Math.round(scrollTop / window.innerHeight)
+  }, 50)
+}
+
+onBeforeUnmount(() => clearTimeout(scrollTimeout))
 </script>
 
 <style scoped>
-.dashboard-header {
-  margin-bottom: 32px;
+/* ── 전체 컨테이너 ── */
+.dashboard-wrap {
+  width: 100%;
+  height: 100vh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  position: relative;
 }
+.dashboard-wrap::-webkit-scrollbar { display: none; }
 
-.dashboard-header h1 {
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.subtitle {
-  color: var(--color-text-muted);
-  font-size: 16px;
-}
-
-.team-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
-}
-
-.member-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 16px;
-  transition: transform 0.2s;
-}
-
-.member-card:hover {
-  transform: translateY(-4px);
-}
-
-.member-avatar img,
-.avatar-placeholder {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.avatar-placeholder {
-  background: var(--color-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.member-name {
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.member-role {
-  color: var(--color-primary);
-  font-size: 13px;
-  margin-top: 2px;
-}
-
-.member-bio {
-  color: var(--color-text-muted);
-  font-size: 13px;
-  margin-top: 6px;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+/* ── 페이지 공통 ── */
+.page {
+  width: 100%;
+  height: 100vh;
+  scroll-snap-align: start;
+  position: relative;
+  background-color: #1a1a1a; /* 배경.png 교체 예정 */
+  background-size: cover;
+  background-position: center;
   overflow: hidden;
 }
 
-.member-stats {
-  margin-top: 8px;
+/* ── 팀 로고 (placeholder) ── */
+.team-logo {
+  position: absolute;
+  left: 50%;
+  top: 178px;
+  transform: translateX(-50%);
+  width: 622px;
+  height: 278px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.stat {
-  background: var(--color-border);
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.loading, .empty {
+.logo-placeholder {
+  font-family: 'ABeeZee', sans-serif;
+  font-size: 72px;
+  font-weight: 400;
+  color: #FFFFFF;
   text-align: center;
-  padding: 60px 0;
-  color: var(--color-text-muted);
+  line-height: 1.1;
+  letter-spacing: 8px;
+  /* 배경 이미지 생기면 이 div 제거 */
+  border: 2px dashed rgba(255,255,255,0.2);
+  padding: 24px 48px;
+  border-radius: 8px;
 }
+
+/* ── 고정 헤더 ── */
+.dash-header {
+  position: fixed;
+  top: 26px;
+  right: 18px;
+  z-index: 100;
+}
+
+.header-auth {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-dash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 83px;
+  height: 32px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
+}
+.btn-dash:hover { opacity: 0.85; }
+
+.btn-login {
+  background: #E3E3E3;
+  border: 1px solid #767676 !important;
+  color: #1E1E1E;
+}
+
+.btn-signup {
+  background: #2C2C2C;
+  border: 1px solid #2C2C2C !important;
+  color: #F5F5F5;
+}
+
+.header-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #2C2C2C;
+  border: 2px solid #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Roboto', sans-serif;
+  font-size: 28px;
+  font-weight: 500;
+  color: #FFFFFF;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  position: relative;
+  top: -10px; /* Figma: top 16px */
+}
+.header-avatar:hover { opacity: 0.85; }
+
+/* ── 고정 하단 네비게이션 ── */
+.page-nav {
+  position: fixed;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  z-index: 100;
+}
+
+.nav-dots {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: transparent;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50px;
+  background: #FFFFFF;
+  opacity: 0.3;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+.dot.active { opacity: 1; }
+
+.nav-arrow {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.arrow {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-top: 3px solid #FFFFFF;
+  border-right: 3px solid #FFFFFF;
+}
+.arrow-left  { transform: rotate(-135deg); margin-left: 4px; }
+.arrow-right { transform: rotate(45deg);  margin-right: 4px; }
 </style>
