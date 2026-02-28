@@ -15,4 +15,9 @@ public class TeamMemberDto {
     private String bio;
     private String avatarUrl;
     private int projectCount;
+    // Contact
+    private String email;
+    private String githubUrl;
+    private String websiteUrl;
+    private String discordTag;
 }
