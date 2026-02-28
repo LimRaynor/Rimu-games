@@ -1,6 +1,7 @@
 package com.rimugames.dashboard.query.controller;
 
 import com.rimugames.common.dto.ApiResponse;
+import com.rimugames.dashboard.query.dto.ProjectDashboardDto;
 import com.rimugames.dashboard.query.dto.TeamMemberDto;
 import com.rimugames.dashboard.query.service.DashboardQueryService;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,11 @@ public class DashboardQueryController {
 
     @GetMapping("/team")
     public ResponseEntity<ApiResponse<List<TeamMemberDto>>> getTeamMembers() {
-        List<TeamMemberDto> teamMembers = dashboardQueryService.getTeamMembers();
-        return ResponseEntity.ok(ApiResponse.success(teamMembers));
+        return ResponseEntity.ok(ApiResponse.success(dashboardQueryService.getTeamMembers()));
+    }
+
+    @GetMapping("/projects")
+    public ResponseEntity<ApiResponse<List<ProjectDashboardDto>>> getProjects() {
+        return ResponseEntity.ok(ApiResponse.success(dashboardQueryService.getAllProjects()));
     }
 }
