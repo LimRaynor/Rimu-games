@@ -3,6 +3,9 @@
 
     <!-- ── 사이드바 ── -->
     <aside class="sidebar">
+      <div class="sidebar-logo-wrap">
+        <img :src="sidebarLogo" alt="RIMU GAMES" class="sidebar-logo" />
+      </div>
       <div class="sidebar-top">
         <div class="avatar-wrap">
           <img v-if="profileForm.avatarUrl" :src="profileForm.avatarUrl" alt="avatar" class="avatar" />
@@ -178,6 +181,7 @@ import { useAuthStore } from '../../stores/auth.js'
 import { useProfileStore } from '../../stores/profile.js'
 import { useProjectStore } from '../../stores/project.js'
 import { authApi } from '../../api/auth.js'
+import sidebarLogo from '../../pubic/image/logo-1.png'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -335,11 +339,22 @@ async function deleteProject() {
   background: #1C1C1E;
   display: flex;
   flex-direction: column;
-  padding: 48px 32px;
+  padding: 32px 32px 48px;
   position: sticky;
   top: 0;
   height: 100vh;
   overflow-y: auto;
+}
+
+.sidebar-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.sidebar-logo {
+  width: 160px;
+  object-fit: contain;
 }
 
 .sidebar-top {
