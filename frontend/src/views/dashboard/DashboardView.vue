@@ -66,26 +66,50 @@
         </div>
       </div>
 
-      <!-- 상세 패널 (오른쪽에서 슬라이드인) -->
-      <transition name="slide-panel">
-        <aside v-if="selectedProject" class="detail-panel">
-          <button class="panel-close" @click="selectedProject = null">✕</button>
+    </section>
+
+    <!-- ── 프로젝트 상세 오버레이 ── -->
+    <transition name="overlay-fade">
+      <div v-if="selectedProject" class="project-overlay">
+
+        <!-- 좌측: 프로젝트 카드 썸네일 -->
+        <div class="overlay-left">
           <div
-            class="panel-thumb"
+            class="overlay-card"
             :style="selectedProject.thumbnailUrl ? { backgroundImage: `url(${selectedProject.thumbnailUrl})` } : {}"
-          ></div>
-          <div class="panel-body">
-            <span v-if="selectedProject.status" class="panel-status">{{ selectedProject.status }}</span>
-            <h2 class="panel-title">{{ selectedProject.title }}</h2>
-            <p class="panel-desc">{{ selectedProject.description }}</p>
-            <div v-if="selectedProject.techStack" class="panel-tech">
-              <span class="tech-label">TECH</span>
-              <span class="tech-value">{{ selectedProject.techStack }}</span>
+          >
+            <div class="overlay-card-gradient"></div>
+            <span class="overlay-card-name">{{ selectedProject.title }}</span>
+          </div>
+          <p v-if="selectedProject.status" class="overlay-card-status">{{ selectedProject.status }}</p>
+          <p class="overlay-card-brief">{{ truncate(selectedProject.description, 80) }}</p>
+        </div>
+
+        <!-- 우측: 미디어 + 상세 정보 -->
+        <div class="overlay-right">
+          <button class="overlay-close" @click="selectedProject = null">✕</button>
+
+          <!-- 미디어 영역 (썸네일 or 영상 자리) -->
+          <div
+            class="overlay-media"
+            :style="selectedProject.thumbnailUrl ? { backgroundImage: `url(${selectedProject.thumbnailUrl})` } : {}"
+          >
+            <span v-if="!selectedProject.thumbnailUrl" class="overlay-media-label">설명용 영상</span>
+          </div>
+
+          <!-- 프로젝트 상세 -->
+          <div class="overlay-details">
+            <h2 class="overlay-title">{{ selectedProject.title }}</h2>
+            <p class="overlay-desc">{{ selectedProject.description }}</p>
+            <div v-if="selectedProject.techStack" class="overlay-tech">
+              <span class="overlay-tech-label">TECH</span>
+              <span class="overlay-tech-value">{{ selectedProject.techStack }}</span>
             </div>
           </div>
-        </aside>
-      </transition>
-    </section>
+        </div>
+
+      </div>
+    </transition>
 
     <!-- ── Page 3: 연락처 ── -->
     <section class="page page-3" :style="{ backgroundImage: `url(${dashBg1})` }">
@@ -578,31 +602,103 @@ onBeforeUnmount(() => clearTimeout(scrollTimeout))
   line-height: 1.4;
 }
 
-/* ── 상세 패널 ── */
-.detail-panel {
-  position: absolute;
+/* ══════════════════════════════
+   프로젝트 상세 오버레이
+══════════════════════════════ */
+.project-overlay {
+  position: fixed;
   top: 0;
+  left: 204px;
   right: 0;
-  width: 440px;
-  height: 100%;
-  background: #111111;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  height: 100vh;
+  background: linear-gradient(180deg, rgba(48, 48, 48, 0.96) 0%, rgba(0, 0, 0, 0.96) 100%);
+  border-left: 1px solid #FFFFFF;
+  display: flex;
+  flex-direction: row;
+  z-index: 200;
+  overflow: hidden;
+}
+
+/* 좌측: 카드 썸네일 영역 */
+.overlay-left {
+  width: 400px;
+  flex-shrink: 0;
+  padding: 116px 24px 40px 32px;
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+
+.overlay-card {
+  position: relative;
+  width: 348px;
+  height: 212px;
+  background-color: #000;
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.overlay-card-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.75) 100%);
+}
+
+.overlay-card-name {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  font-family: 'ABeeZee', sans-serif;
+  font-size: 19px;
+  font-weight: 400;
+  color: #FFFFFF;
+  letter-spacing: -0.04em;
+}
+
+.overlay-card-status {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6750A4;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 0;
+}
+
+.overlay-card-brief {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+/* 우측: 미디어 + 상세 */
+.overlay-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 116px 48px 40px 32px;
+  gap: 28px;
   overflow-y: auto;
   scrollbar-width: none;
-  z-index: 10;
+  position: relative;
 }
-.detail-panel::-webkit-scrollbar { display: none; }
+.overlay-right::-webkit-scrollbar { display: none; }
 
-.panel-close {
+.overlay-close {
   position: absolute;
   top: 20px;
-  right: 20px;
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
+  right: 24px;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   color: #FFFFFF;
   font-size: 14px;
@@ -613,59 +709,65 @@ onBeforeUnmount(() => clearTimeout(scrollTimeout))
   transition: background 0.2s;
   z-index: 1;
 }
-.panel-close:hover { background: rgba(255, 255, 255, 0.18); }
+.overlay-close:hover { background: rgba(255, 255, 255, 0.2); }
 
-.panel-thumb {
+.overlay-media {
   width: 100%;
   aspect-ratio: 16 / 9;
-  background-color: #1a1a1a;
+  background-color: #D9D9D9;
   background-size: cover;
   background-position: center;
+  border-radius: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.panel-body {
-  padding: 28px 32px 40px;
+.overlay-media-label {
+  font-family: 'ABeeZee', sans-serif;
+  font-size: 40px;
+  font-weight: 400;
+  color: #000;
+  letter-spacing: -0.04em;
+}
+
+.overlay-details {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
-.panel-status {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: #6750A4;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-}
-
-.panel-title {
-  font-family: 'ABeeZee', sans-serif;
-  font-size: 26px;
-  font-weight: 400;
+.overlay-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 36px;
+  font-weight: 500;
   color: #FFFFFF;
+  letter-spacing: -0.04em;
   margin: 0;
   line-height: 1.3;
+  text-shadow: 0px 2px 1px rgba(0,0,0,0.25);
 }
 
-.panel-desc {
+.overlay-desc {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.75);
-  line-height: 1.7;
+  font-size: 22px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  letter-spacing: -0.04em;
   margin: 0;
+  text-shadow: 0px 2px 1px rgba(0,0,0,0.25);
 }
 
-.panel-tech {
+.overlay-tech {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
+  gap: 12px;
+  align-items: center;
+  margin-top: 4px;
 }
 
-.tech-label {
+.overlay-tech-label {
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 600;
@@ -673,10 +775,21 @@ onBeforeUnmount(() => clearTimeout(scrollTimeout))
   letter-spacing: 1.5px;
 }
 
-.tech-value {
+.overlay-tech-value {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* 오버레이 트랜지션 */
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
+  transform: translateX(40px);
 }
 
 /* ══════════════════════════════
@@ -803,13 +916,4 @@ a.contact-link:hover { color: #FFFFFF; }
   margin: 0;
 }
 
-/* ── 슬라이드 트랜지션 ── */
-.slide-panel-enter-active,
-.slide-panel-leave-active {
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.slide-panel-enter-from,
-.slide-panel-leave-to  { transform: translateX(100%); }
-.slide-panel-enter-to,
-.slide-panel-leave-from { transform: translateX(0); }
 </style>
