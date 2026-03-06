@@ -17,9 +17,9 @@
     </header>
 
     <!-- ── Page 1: 팀 소개 ── -->
-    <section class="page page-1">
+    <section class="page page-1" :style="{ backgroundImage: `url(${dashBg1})` }">
       <div class="team-logo">
-        <div class="logo-placeholder">RIMU<br>GAMES</div>
+        <img :src="logoImg" alt="RIMU GAMES" class="team-logo-img" />
       </div>
 
       <div class="team-intro">
@@ -43,7 +43,7 @@
     </section>
 
     <!-- ── Page 2: 프로젝트 카드 ── -->
-    <section class="page page-2">
+    <section class="page page-2" :style="{ backgroundImage: `url(${dashBg2})` }">
       <div class="projects-grid">
         <div
           v-for="project in projects"
@@ -88,7 +88,7 @@
     </section>
 
     <!-- ── Page 3: 연락처 ── -->
-    <section class="page page-3">
+    <section class="page page-3" :style="{ backgroundImage: `url(${dashBg1})` }">
       <div class="contact-wrap">
 
         <!-- 좌측: 헤딩 -->
@@ -177,6 +177,9 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
 import { dashboardApi } from '../../api/dashboard.js'
+import dashBg1 from '../../pubic/image/dashdoard-1.png'
+import dashBg2 from '../../pubic/image/dashdoard-2.png'
+import logoImg from '../../pubic/image/logo-1.png'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -290,7 +293,7 @@ onBeforeUnmount(() => clearTimeout(scrollTimeout))
   overflow: hidden;
 }
 
-/* ── 팀 로고 (placeholder) ── */
+/* ── 팀 로고 ── */
 .team-logo {
   position: absolute;
   left: 50%;
@@ -303,18 +306,10 @@ onBeforeUnmount(() => clearTimeout(scrollTimeout))
   justify-content: center;
 }
 
-.logo-placeholder {
-  font-family: 'ABeeZee', sans-serif;
-  font-size: 72px;
-  font-weight: 400;
-  color: #FFFFFF;
-  text-align: center;
-  line-height: 1.1;
-  letter-spacing: 8px;
-  /* 배경 이미지 생기면 이 div 제거 */
-  border: 2px dashed rgba(255,255,255,0.2);
-  padding: 24px 48px;
-  border-radius: 8px;
+.team-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 /* ── 고정 헤더 ── */
