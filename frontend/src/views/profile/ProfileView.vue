@@ -44,6 +44,9 @@
       <transition name="toast">
         <div v-if="saveSuccess" class="toast">저장되었습니다!</div>
       </transition>
+      <transition name="toast">
+        <div v-if="autoSaveMsg" class="toast toast--auto">{{ autoSaveMsg }}</div>
+      </transition>
 
       <!-- Tab: 기본정보 -->
       <div v-if="activeTab === 'basic'" class="tab-pane">
@@ -220,7 +223,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
 import { useProfileStore } from '../../stores/profile.js'
@@ -247,6 +250,7 @@ const userInitial = computed(() => userName.value.charAt(0).toUpperCase())
 // ── 프로필 저장 상태 ──
 const saving = ref(false)
 const saveSuccess = ref(false)
+const autoSaveMsg = ref('')  // '자동 저장됨' 표시용
 
 // ── 프로필 폼 ──
 const profileForm = reactive({
@@ -287,6 +291,20 @@ const projectForm = reactive({
   thumbnailUrl: '',
 })
 
+// ── 자동 저장 ──
+let autoSaveTimer = null
+
+async function autoSave() {
+  if (saving.value) return
+  profileForm.name = teamMembers.value[0]?.name || ''
+  profileForm.role = teamMembers.value[0]?.role || ''
+  try {
+    await profileStore.updateProfile({ ...profileForm })
+    autoSaveMsg.value = '자동 저장됨'
+    setTimeout(() => { autoSaveMsg.value = '' }, 2000)
+  } catch {}
+}
+
 // ── 초기 로드 ──
 onMounted(async () => {
   try {
@@ -298,6 +316,11 @@ onMounted(async () => {
     }
   } catch {}
   await projectStore.fetchMyProjects()
+  autoSaveTimer = setInterval(autoSave, 60000)
+})
+
+onBeforeUnmount(() => {
+  clearInterval(autoSaveTimer)
 })
 
 // ── 프로필 저장 ──
@@ -548,6 +571,14 @@ async function deleteProject() {
   font-family: 'Roboto', sans-serif;
   z-index: 9999;
   box-shadow: 0 4px 20px rgba(103, 80, 164, 0.4);
+}
+
+.toast--auto {
+  top: 80px;
+  background: #444;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  font-size: 13px;
+  padding: 10px 20px;
 }
 
 .toast-enter-active,
