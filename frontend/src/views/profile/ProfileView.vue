@@ -112,7 +112,7 @@
           <div class="team-col">
             <h3 class="team-col-title">팀원 역할</h3>
             <div v-for="(member, i) in teamMembers" :key="'role-' + i" class="team-input-wrap">
-              <input v-model="member.role" type="text" class="team-input" placeholder="역할" />
+              <input v-model="member.role" type="text" class="team-input" placeholder="ex) 기획, 개발, 아트" />
             </div>
           </div>
         </div>
@@ -264,11 +264,8 @@ const profileForm = reactive({
 const bgImageInput = ref(null)
 const logoImageInput = ref(null)
 
-// ── 팀원 목록 ──
-const teamMembers = ref([
-  { name: '', role: '' },
-  { name: '', role: '' },
-])
+// ── 팀원 목록 (첫 번째 행 = 본인 name/role) ──
+const teamMembers = ref([{ name: '', role: '' }])
 
 function addTeamMember() {
   teamMembers.value.push({ name: '', role: '' })
@@ -296,6 +293,8 @@ onMounted(async () => {
     await profileStore.fetchMyProfile()
     if (profileStore.profile) {
       Object.assign(profileForm, profileStore.profile)
+      teamMembers.value[0].name = profileStore.profile.name || ''
+      teamMembers.value[0].role = profileStore.profile.role || ''
     }
   } catch {}
   await projectStore.fetchMyProjects()
@@ -305,6 +304,9 @@ onMounted(async () => {
 async function saveProfile() {
   saving.value = true
   saveSuccess.value = false
+  // 첫 번째 행(본인 정보)을 profileForm에 반영
+  profileForm.name = teamMembers.value[0]?.name || ''
+  profileForm.role = teamMembers.value[0]?.role || ''
   try {
     await profileStore.updateProfile({ ...profileForm })
     saveSuccess.value = true
