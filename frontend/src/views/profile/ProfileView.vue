@@ -68,39 +68,67 @@
           <div class="image-section">
             <div class="input-label">배경 이미지</div>
             <div class="image-desc">1920*1080px 의 jpg, png, webp 이미지</div>
-            <div class="split-btn-wrap">
-              <button class="split-btn-lead" @click="bgImageInput.click()">
+            <div class="split-btn-wrap" style="position:relative">
+              <button class="split-btn-lead" @click="triggerFileInput(bgImageInput)">
                 <svg class="split-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
                   <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
                 </svg>
                 파일 선택
               </button>
-              <button class="split-btn-trail">
+              <button class="split-btn-trail" @click.stop="toggleDropdown('bg')">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
                   <path d="M7 10l5 5 5-5z"/>
                 </svg>
               </button>
+              <div v-if="activeDropdown === 'bg'" class="img-dropdown">
+                <button @click="triggerFileInput(bgImageInput); activeDropdown = null">내 드라이브에서 불러오기</button>
+                <button @click="openUrlModal('bg', '구글 드라이브 URL')">구글 드라이브에서 불러오기</button>
+                <button @click="openUrlModal('bg', '임베드 URL')">임베드로 넣기</button>
+              </div>
             </div>
-            <input ref="bgImageInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" />
+            <input ref="bgImageInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" @change="onFileChange($event, 'bg')" />
           </div>
 
           <div class="image-section">
             <div class="input-label">로고 이미지</div>
             <div class="image-desc">최대 500*500px 의 jpg, png, webp 이미지</div>
-            <div class="split-btn-wrap">
-              <button class="split-btn-lead" @click="logoImageInput.click()">
+            <div class="split-btn-wrap" style="position:relative">
+              <button class="split-btn-lead" @click="triggerFileInput(logoImageInput)">
                 <svg class="split-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
                   <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
                 </svg>
                 파일 선택
               </button>
-              <button class="split-btn-trail">
+              <button class="split-btn-trail" @click.stop="toggleDropdown('logo')">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
                   <path d="M7 10l5 5 5-5z"/>
                 </svg>
               </button>
+              <div v-if="activeDropdown === 'logo'" class="img-dropdown">
+                <button @click="triggerFileInput(logoImageInput); activeDropdown = null">내 드라이브에서 불러오기</button>
+                <button @click="openUrlModal('logo', '구글 드라이브 URL')">구글 드라이브에서 불러오기</button>
+                <button @click="openUrlModal('logo', '임베드 URL')">임베드로 넣기</button>
+              </div>
             </div>
-            <input ref="logoImageInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" />
+            <input ref="logoImageInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" @change="onFileChange($event, 'logo')" />
+          </div>
+        </div>
+
+        <!-- URL 입력 모달 -->
+        <div v-if="urlModal.show" class="url-modal-backdrop" @click.self="urlModal.show = false">
+          <div class="url-modal">
+            <h3 class="url-modal-title">{{ urlModal.label }}</h3>
+            <input
+              v-model="urlModal.value"
+              type="url"
+              class="url-modal-input"
+              :placeholder="urlModal.label === '구글 드라이브 URL' ? 'https://drive.google.com/file/d/...' : 'https://...'"
+              @keydown.enter="confirmUrl"
+            />
+            <div class="url-modal-actions">
+              <button class="url-modal-confirm" @click="confirmUrl">확인</button>
+              <button class="url-modal-cancel" @click="urlModal.show = false">취소</button>
+            </div>
           </div>
         </div>
 
@@ -268,6 +296,55 @@ const profileForm = reactive({
 const bgImageInput = ref(null)
 const logoImageInput = ref(null)
 
+// ── 이미지 드롭다운 / URL 모달 ──
+const activeDropdown = ref(null)
+const urlModal = reactive({ show: false, field: null, label: '', value: '' })
+
+function toggleDropdown(key) {
+  activeDropdown.value = activeDropdown.value === key ? null : key
+}
+
+function triggerFileInput(inputRef) {
+  activeDropdown.value = null
+  inputRef?.click()
+}
+
+function onFileChange(event, field) {
+  const file = event.target.files[0]
+  if (!file) return
+  const url = URL.createObjectURL(file)
+  if (field === 'bg') profileForm.bgImageUrl = url
+  else if (field === 'logo') profileForm.logoImageUrl = url
+  else if (field === 'avatar') profileForm.avatarUrl = url
+}
+
+function openUrlModal(field, label) {
+  activeDropdown.value = null
+  urlModal.field = field
+  urlModal.label = label
+  urlModal.value = ''
+  urlModal.show = true
+}
+
+function convertGDriveUrl(url) {
+  const match = url.match(/\/file\/d\/([^/]+)/)
+  if (match) return `https://drive.google.com/uc?id=${match[1]}`
+  return url
+}
+
+function confirmUrl() {
+  let url = urlModal.value.trim()
+  if (!url) return
+  if (urlModal.label === '구글 드라이브 URL') url = convertGDriveUrl(url)
+  if (urlModal.field === 'bg') profileForm.bgImageUrl = url
+  else if (urlModal.field === 'logo') profileForm.logoImageUrl = url
+  else if (urlModal.field === 'avatar') profileForm.avatarUrl = url
+  urlModal.show = false
+}
+
+// 외부 클릭 시 드롭다운 닫기
+function onDocumentClick() { activeDropdown.value = null }
+
 // ── 팀원 목록 (첫 번째 행 = 본인 name/role) ──
 const teamMembers = ref([{ name: '', role: '' }])
 
@@ -317,10 +394,12 @@ onMounted(async () => {
   } catch {}
   await projectStore.fetchMyProjects()
   autoSaveTimer = setInterval(autoSave, 60000)
+  document.addEventListener('click', onDocumentClick)
 })
 
 onBeforeUnmount(() => {
   clearInterval(autoSaveTimer)
+  document.removeEventListener('click', onDocumentClick)
 })
 
 // ── 프로필 저장 ──
@@ -719,6 +798,116 @@ async function deleteProject() {
 
 .split-btn-trail:hover {
   opacity: 0.85;
+}
+
+/* ── 이미지 드롭다운 ── */
+.img-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #FFFFFF;
+  border: 1px solid #D9D9D9;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 100;
+  min-width: 220px;
+  overflow: hidden;
+}
+
+.img-dropdown button {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  color: #1E1E1E;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.img-dropdown button:hover {
+  background: #F2F2F7;
+}
+
+/* ── URL 입력 모달 ── */
+.url-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.url-modal {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 32px;
+  width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+
+.url-modal-title {
+  font-family: 'Roboto', sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  color: #1E1E1E;
+  margin: 0;
+}
+
+.url-modal-input {
+  width: 100%;
+  height: 48px;
+  padding: 12px 16px;
+  border: 1px solid #D9D9D9;
+  border-radius: 8px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  color: #1E1E1E;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.url-modal-input:focus {
+  border-color: #6750A4;
+}
+
+.url-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.url-modal-confirm {
+  padding: 10px 28px;
+  background: #6750A4;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.url-modal-confirm:hover { opacity: 0.85; }
+
+.url-modal-cancel {
+  padding: 10px 20px;
+  background: transparent;
+  color: #9E9E9E;
+  border: 1px solid #D9D9D9;
+  border-radius: 8px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  cursor: pointer;
 }
 
 /* ── 팀원 섹션 ── */
