@@ -93,6 +93,10 @@
               </div>
             </div>
             <input ref="bgImageInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" @change="onFileChange($event, 'bg')" />
+            <div v-if="profileForm.bgImageUrl" class="file-preview-wrap">
+              <img :src="profileForm.bgImageUrl" class="file-preview-img" alt="배경 이미지 미리보기" />
+              <button type="button" class="file-clear-btn" @click="profileForm.bgImageUrl = ''">선택 삭제</button>
+            </div>
           </div>
 
           <div class="image-section">
@@ -117,6 +121,10 @@
               </div>
             </div>
             <input ref="logoImageInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" @change="onFileChange($event, 'logo')" />
+            <div v-if="profileForm.logoImageUrl" class="file-preview-wrap">
+              <img :src="profileForm.logoImageUrl" class="file-preview-img" alt="로고 이미지 미리보기" />
+              <button type="button" class="file-clear-btn" @click="profileForm.logoImageUrl = ''">선택 삭제</button>
+            </div>
           </div>
         </div>
 
@@ -160,93 +168,150 @@
       </div>
 
       <!-- Tab: 프로젝트 -->
-      <div v-if="activeTab === 'project'" class="tab-pane">
-        <div class="tab-title-row">
-          <h2 class="tab-title">프로젝트</h2>
-          <span v-if="selectedProject && projectStore.projects.length > 0" class="project-count">
-            {{ selectedProjectIndex }}/{{ projectStore.projects.length }}
-          </span>
-        </div>
+      <div v-if="activeTab === 'project'" class="tab-pane tab-pane--project">
 
-        <div class="project-strip">
+        <!-- 프로젝트 수 -->
+        <p v-if="selectedProject && projectStore.projects.length > 0" class="proj-count-label">
+          {{ selectedProjectIndex }}/{{ projectStore.projects.length }}
+        </p>
+
+        <!-- 카드 스트립 -->
+        <div class="proj-strip">
           <div
             v-for="project in projectStore.projects"
             :key="project.id"
-            class="project-card-thumb"
+            class="proj-card"
             :class="{ selected: selectedProject?.id === project.id }"
             @click="trySelectProject(project)"
           >
-            <div class="thumb-img">
-              <img v-if="project.thumbnailUrl" :src="project.thumbnailUrl" alt="thumb" />
-              <div v-else class="thumb-placeholder">🎮</div>
+            <img v-if="project.thumbnailUrl" :src="project.thumbnailUrl" class="proj-card-bg-img" />
+            <div class="proj-card-gradient"></div>
+            <span class="proj-card-name">{{ project.title }}</span>
+            <span class="proj-card-status">{{ project.status }}</span>
+            <div class="proj-card-icons">
+              <button type="button" class="proj-icon-btn" @click.stop="deleteProjectFromCard(project)" title="삭제">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </button>
             </div>
-            <p class="thumb-title">{{ project.title }}</p>
           </div>
-          <button class="add-card-btn" @click="tryNewProject" title="프로젝트 추가">
-            <span>+</span>
-          </button>
+          <div class="proj-card proj-card-add" @click="tryNewProject">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            <span class="proj-card-add-label">추가</span>
+          </div>
         </div>
 
-        <div v-if="showProjectForm" class="project-edit-form">
-          <h3 class="edit-form-title">{{ isNewProject ? '새 프로젝트' : '프로젝트 편집' }}</h3>
-          <form @submit.prevent="saveProject">
-            <div class="form-row-2">
-              <div class="field-group">
-                <label class="field-label">이름</label>
-                <input v-model="projectForm.title" type="text" placeholder="프로젝트 이름" class="field-input" required />
-              </div>
-              <div class="field-group">
-                <label class="field-label">버전 / 상태</label>
-                <input v-model="projectForm.status" type="text" placeholder="ex) v1.0, 진행중, 완성" class="field-input" />
-              </div>
+        <!-- 편집 폼 -->
+        <div v-if="showProjectForm" class="proj-form">
+
+          <div class="proj-form-row2">
+            <div class="input-field">
+              <label class="input-label">이름</label>
+              <input v-model="projectForm.title" type="text" class="input-box" placeholder="프로젝트 이름" />
             </div>
-            <div class="field-group">
-              <label class="field-label">태그 (기술스택)</label>
-              <input v-model="projectForm.techStack" type="text" placeholder="ex) Unity, C#, 2D 플랫포머" class="field-input" />
+            <div class="input-field">
+              <label class="input-label">버전 / 상태</label>
+              <input v-model="projectForm.status" type="text" class="input-box" placeholder="ex) v1.0, 진행중, 완성" />
             </div>
-            <div class="field-group">
-              <div class="md-editor-header">
-                <label class="field-label">세부설명</label>
-                <div class="md-tab-group">
-                  <button type="button" class="md-tab" :class="{ active: !descPreview }" @click="descPreview = false">편집</button>
-                  <button type="button" class="md-tab" :class="{ active: descPreview }" @click="descPreview = true">미리보기</button>
+          </div>
+
+          <div class="input-field input-field--wide">
+            <label class="input-label">태그 (기술스택)</label>
+            <div class="image-desc">예) Unity, C#, 2D 플랫포머</div>
+            <input v-model="projectForm.techStack" type="text" class="input-box" placeholder="Unity, C#..." />
+          </div>
+
+          <div class="image-row">
+            <div class="image-section">
+              <div class="input-label">카드 썸네일</div>
+              <div class="image-desc">348*212px 의 jpg, png, webp 이미지</div>
+              <div class="split-btn-wrap" style="position:relative">
+                <button class="split-btn-lead" type="button" @click="triggerFileInput(projThumbInput)">
+                  <svg class="split-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                  </svg>
+                  파일 선택
+                </button>
+                <button class="split-btn-trail" type="button" @click.stop="toggleDropdown('projThumb')">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M7 10l5 5 5-5z"/></svg>
+                </button>
+                <div v-if="activeDropdown === 'projThumb'" class="img-dropdown">
+                  <button @click="triggerFileInput(projThumbInput); activeDropdown = null">내 드라이브에서 불러오기</button>
+                  <button @click="openUrlModal('projThumb', '구글 드라이브 URL')">구글 드라이브에서 불러오기</button>
+                  <button @click="openUrlModal('projThumb', '임베드 URL')">임베드로 넣기</button>
                 </div>
               </div>
-              <textarea
-                v-if="!descPreview"
-                v-model="projectForm.description"
-                rows="8"
-                placeholder="내용 작성"
-                class="field-input md-textarea"
-              ></textarea>
-              <div v-else class="md-preview" v-html="descHtml"></div>
-            </div>
-            <div class="form-row-2">
-              <div class="field-group">
-                <label class="field-label">썸네일 URL</label>
-                <input v-model="projectForm.thumbnailUrl" type="url" placeholder="https://..." class="field-input" />
-              </div>
-              <div class="field-group">
-                <label class="field-label">영상 / 링크</label>
-                <input v-model="projectForm.projectUrl" type="url" placeholder="https://..." class="field-input" />
+              <input ref="projThumbInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" @change="onFileChange($event, 'projThumb')" />
+              <div v-if="projectForm.thumbnailUrl" class="file-preview-wrap">
+                <img :src="projectForm.thumbnailUrl" class="file-preview-img" alt="썸네일 미리보기" />
+                <button type="button" class="file-clear-btn" @click="projectForm.thumbnailUrl = ''">선택 삭제</button>
               </div>
             </div>
-            <div class="field-group">
-              <label class="field-label">GitHub URL</label>
-              <input v-model="projectForm.repoUrl" type="url" placeholder="https://github.com/..." class="field-input" />
+            <div class="image-section">
+              <div class="input-label">설명용 영상</div>
+              <div class="image-desc">mp4, mov, webm</div>
+              <div class="split-btn-wrap" style="position:relative">
+                <button class="split-btn-lead" type="button" @click="triggerFileInput(projVideoInput)">
+                  <svg class="split-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                  </svg>
+                  파일 선택
+                </button>
+                <button class="split-btn-trail" type="button" @click.stop="toggleDropdown('projVideo')">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M7 10l5 5 5-5z"/></svg>
+                </button>
+                <div v-if="activeDropdown === 'projVideo'" class="img-dropdown">
+                  <button @click="triggerFileInput(projVideoInput); activeDropdown = null">내 드라이브에서 불러오기</button>
+                  <button @click="openUrlModal('projVideo', '구글 드라이브 URL')">구글 드라이브에서 불러오기</button>
+                  <button @click="openUrlModal('projVideo', '임베드 URL')">임베드로 넣기</button>
+                </div>
+              </div>
+              <input ref="projVideoInput" type="file" accept=".mp4,.mov,.webm" style="display:none" @change="onFileChange($event, 'projVideo')" />
+              <div v-if="projectForm.projectUrl" class="file-preview-wrap file-preview-wrap--video">
+                <video v-if="isVideoUrl(projectForm.projectUrl)" :src="projectForm.projectUrl" controls class="file-preview-video"></video>
+                <iframe v-else :src="projectForm.projectUrl" class="file-preview-video" allowfullscreen></iframe>
+                <button type="button" class="file-clear-btn" @click="projectForm.projectUrl = ''">선택 삭제</button>
+              </div>
             </div>
-            <div class="project-form-actions">
-              <button type="submit" class="btn-save-project" :disabled="projectSaving">
-                {{ projectSaving ? '저장 중...' : '저장' }}
-              </button>
-              <button v-if="!isNewProject" type="button" class="btn-delete-project" @click="deleteProject">삭제</button>
-              <button type="button" class="btn-cancel-project" @click="cancelProjectEdit">취소</button>
+          </div>
+
+          <div class="field-group">
+            <div class="md-editor-header">
+              <label class="input-label">세부설명</label>
+              <div class="md-tab-group">
+                <button type="button" class="md-tab" :class="{ active: !descPreview }" @click="descPreview = false">편집</button>
+                <button type="button" class="md-tab" :class="{ active: descPreview }" @click="descPreview = true">미리보기</button>
+              </div>
             </div>
-          </form>
+            <textarea
+              v-if="!descPreview"
+              v-model="projectForm.description"
+              rows="12"
+              placeholder="내용 작성"
+              class="field-input md-textarea"
+            ></textarea>
+            <div v-else class="md-preview" v-html="descHtml"></div>
+          </div>
+
+          <div class="field-group">
+            <label class="input-label">GitHub URL</label>
+            <input v-model="projectForm.repoUrl" type="url" placeholder=" " class="input-box" />
+          </div>
+
+          <div class="project-form-actions">
+            <button type="button" class="btn-save-project" :disabled="projectSaving" @click="saveProject">
+              {{ projectSaving ? '저장 중...' : '저장' }}
+            </button>
+            <button v-if="!isNewProject" type="button" class="btn-delete-project" @click="deleteProject">삭제</button>
+            <button type="button" class="btn-cancel-project" @click="cancelProjectEdit">취소</button>
+          </div>
         </div>
 
         <div v-else class="project-empty-hint">
-          <p>프로젝트를 선택하거나 + 버튼으로 추가하세요</p>
+          <p>프로젝트를 선택하거나 추가 카드를 클릭하세요</p>
         </div>
       </div>
 
@@ -332,6 +397,8 @@ const profileForm = reactive({
 // ── 이미지 업로드 refs ──
 const bgImageInput = ref(null)
 const logoImageInput = ref(null)
+const projThumbInput = ref(null)
+const projVideoInput = ref(null)
 
 // ── 이미지 드롭다운 / URL 모달 ──
 const activeDropdown = ref(null)
@@ -353,6 +420,8 @@ function onFileChange(event, field) {
   if (field === 'bg') profileForm.bgImageUrl = url
   else if (field === 'logo') profileForm.logoImageUrl = url
   else if (field === 'avatar') profileForm.avatarUrl = url
+  else if (field === 'projThumb') projectForm.thumbnailUrl = url
+  else if (field === 'projVideo') projectForm.projectUrl = url
 }
 
 function openUrlModal(field, label) {
@@ -376,11 +445,19 @@ function confirmUrl() {
   if (urlModal.field === 'bg') profileForm.bgImageUrl = url
   else if (urlModal.field === 'logo') profileForm.logoImageUrl = url
   else if (urlModal.field === 'avatar') profileForm.avatarUrl = url
+  else if (urlModal.field === 'projThumb') projectForm.thumbnailUrl = url
+  else if (urlModal.field === 'projVideo') projectForm.projectUrl = url
   urlModal.show = false
 }
 
 // 외부 클릭 시 드롭다운 닫기
 function onDocumentClick() { activeDropdown.value = null }
+
+// 영상 URL 판별 (blob 또는 확장자 기반)
+function isVideoUrl(url) {
+  if (!url) return false
+  return url.startsWith('blob:') || /\.(mp4|mov|webm)$/i.test(url)
+}
 
 // ── 팀원 목록 (첫 번째 행 = 본인 name/role) ──
 const teamMembers = ref([{ name: '', role: '' }])
@@ -565,6 +642,17 @@ async function saveProject() {
     console.error('프로젝트 저장 실패:', e)
   } finally {
     projectSaving.value = false
+  }
+}
+
+// ── 프로젝트: 카드에서 직접 삭제 ──
+async function deleteProjectFromCard(project) {
+  if (!confirm('프로젝트를 삭제하시겠습니까?')) return
+  try {
+    await projectStore.deleteProject(project.id)
+    if (selectedProject.value?.id === project.id) cancelProjectEdit()
+  } catch (e) {
+    console.error('프로젝트 삭제 실패:', e)
   }
 }
 
@@ -1078,29 +1166,7 @@ async function deleteProject() {
   background: #c5c5c5;
 }
 
-/* ── 프로젝트/연락처 탭 공통 필드 ── */
-.tab-title-row {
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
-  margin-bottom: 40px;
-}
-
-.tab-title {
-  font-family: 'Roboto', sans-serif;
-  font-size: 28px;
-  font-weight: 400;
-  color: #1E1E1E;
-  margin: 0;
-}
-
-.project-count {
-  font-family: 'Roboto', sans-serif;
-  font-size: 18px;
-  font-weight: 400;
-  color: #9E9E9E;
-}
-
+/* ── 연락처 탭 필드 ── */
 .field-group {
   display: flex;
   flex-direction: column;
@@ -1139,109 +1205,157 @@ textarea.field-input {
   min-height: 120px;
 }
 
-/* ── 프로젝트 카드 스트립 ── */
-.project-strip {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding-bottom: 16px;
-  margin-bottom: 40px;
-  scrollbar-width: thin;
-  max-width: 100%;
+/* ── 프로젝트 탭 ── */
+.tab-pane--project {
+  padding-top: 0;
 }
 
-.project-card-thumb {
+.proj-count-label {
+  font-family: 'ABeeZee', sans-serif;
+  font-size: 32px;
+  line-height: 38px;
+  letter-spacing: -0.04em;
+  color: #000000;
+  margin: 0 0 24px 0;
+}
+
+/* 카드 스트립 */
+.proj-strip {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  margin-bottom: 60px;
+  scrollbar-width: thin;
+}
+
+.proj-card {
+  position: relative;
   flex-shrink: 0;
-  width: 140px;
-  cursor: pointer;
-  border-radius: 12px;
+  width: 348px;
+  height: 212px;
+  background: #000000;
   overflow: hidden;
-  border: 3px solid transparent;
+  cursor: pointer;
+  border: 5px solid transparent;
   transition: border-color 0.2s;
 }
 
-.project-card-thumb.selected {
-  border-color: #6750A4;
+.proj-card:first-child { border-radius: 16px 0 0 16px; }
+.proj-card:last-child  { border-radius: 0 16px 16px 0; }
+.proj-card:only-child  { border-radius: 16px; }
+
+.proj-card.selected {
+  border-color: #8800FF;
+  z-index: 1;
 }
 
-.thumb-img {
-  width: 100%;
-  height: 100px;
-  background: #1a1a1a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.thumb-img img {
+.proj-card-bg-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.thumb-placeholder {
-  font-size: 32px;
+.proj-card-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(78,87,95,0) 0%, rgba(78,87,95,0.5) 60%, #C3DEEF 100%);
 }
 
-.thumb-title {
-  background: #F5F5F5;
-  padding: 8px 10px;
-  font-size: 13px;
-  color: #1E1E1E;
-  font-family: 'Roboto', sans-serif;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.proj-card-name {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  font-family: 'ABeeZee', sans-serif;
+  font-size: 19px;
+  line-height: 22px;
+  letter-spacing: -0.04em;
+  color: #FFFFFF;
+  z-index: 2;
 }
 
-.add-card-btn {
-  flex-shrink: 0;
-  width: 140px;
-  height: 140px;
-  border-radius: 12px;
-  border: 2px dashed #D9D9D9;
-  background: transparent;
+.proj-card-status {
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 17px;
+  line-height: 22px;
+  letter-spacing: -0.04em;
+  color: #FFFFFF;
+  text-shadow: 0px 2px 1px rgba(0,0,0,0.25);
+  z-index: 2;
+}
+
+.proj-card-icons {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 4px;
+  z-index: 3;
+}
+
+.proj-icon-btn {
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(0,0,0,0.45);
+  border: none;
+  border-radius: 6px;
+  color: #FFFFFF;
   cursor: pointer;
-  color: #9E9E9E;
-  font-size: 36px;
-  transition: border-color 0.2s, color 0.2s;
+  transition: background 0.2s;
 }
 
-.add-card-btn:hover {
-  border-color: #6750A4;
-  color: #6750A4;
+.proj-icon-btn:hover { background: rgba(255,101,132,0.75); }
+
+/* 추가 카드 */
+.proj-card-add {
+  background: #989898 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  gap: 8px;
+  border-radius: 0 16px 16px 0 !important;
+  transition: background 0.2s !important;
 }
 
-/* ── 프로젝트 편집 폼 ── */
-.project-edit-form {
-  background: #F9F9F9;
-  border-radius: 16px;
-  padding: 40px;
-  max-width: 900px;
+.proj-card-add:hover { background: #7a7a7a !important; }
+
+.proj-card-add-label {
+  font-family: 'ABeeZee', sans-serif;
+  font-size: 19px;
+  letter-spacing: -0.04em;
+  color: #FFFFFF;
 }
 
-.edit-form-title {
-  font-family: 'Roboto', sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  color: #1E1E1E;
-  margin-bottom: 28px;
+/* 편집 폼 */
+.proj-form {
+  max-width: 1369px;
 }
 
-.form-row-2 {
+.proj-form-row2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 354px 354px;
   gap: 24px;
+  margin-bottom: 40px;
+}
+
+.input-field--wide {
+  max-width: 783px;
 }
 
 .project-form-actions {
   display: flex;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 32px;
+  margin-bottom: 60px;
 }
 
 .btn-save-project {
@@ -1293,6 +1407,55 @@ textarea.field-input {
   color: #9E9E9E;
   font-family: 'Roboto', sans-serif;
   font-size: 16px;
+}
+
+/* ── 파일 미리보기 ── */
+.file-preview-wrap {
+  margin-top: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #D9D9D9;
+  width: 100%;
+  max-width: 354px;
+  background: #000;
+}
+
+.file-preview-wrap--video {
+  max-width: 480px;
+  aspect-ratio: 16 / 9;
+}
+
+.file-preview-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  object-fit: contain;
+}
+
+.file-preview-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.file-clear-btn {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  background: #F9F9F9;
+  border: none;
+  border-top: 1px solid #D9D9D9;
+  font-family: 'Roboto', sans-serif;
+  font-size: 13px;
+  color: #ff6584;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.file-clear-btn:hover {
+  background: #fff0f3;
 }
 
 /* ── 마크다운 에디터 ── */
