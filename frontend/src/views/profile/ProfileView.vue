@@ -57,12 +57,6 @@
       <!-- Tab: 기본정보 -->
       <div v-if="activeTab === 'basic'" class="tab-pane">
 
-        <!-- 이름 -->
-        <div class="input-field input-field--narrow">
-          <label class="input-label">이름</label>
-          <input v-model="profileForm.name" type="text" class="input-box" placeholder="이름을 입력하세요" />
-        </div>
-
         <!-- 소개글 -->
         <div class="input-field input-field--full">
           <label class="input-label">소개글</label>
@@ -147,18 +141,15 @@
         </div>
 
         <!-- 팀원 이름 / 역할 -->
-        <div class="team-section">
-          <div class="team-col">
-            <h3 class="team-col-title">팀원 이름</h3>
-            <div v-for="(member, i) in teamMembers" :key="'name-' + i" class="team-input-wrap">
-              <input v-model="member.name" type="text" class="team-input" placeholder="이름" />
-            </div>
+        <div class="team-list">
+          <div class="team-list-header">
+            <span class="team-col-title">팀원 이름</span>
+            <span class="team-col-title">팀원 역할</span>
           </div>
-          <div class="team-col">
-            <h3 class="team-col-title">팀원 역할</h3>
-            <div v-for="(member, i) in teamMembers" :key="'role-' + i" class="team-input-wrap">
-              <input v-model="member.role" type="text" class="team-input" placeholder="ex) 기획, 개발, 아트" />
-            </div>
+          <div v-for="(member, i) in teamMembers" :key="member.id ?? 'new-' + i" class="team-row">
+            <input v-model="member.name" type="text" class="team-input" placeholder="이름" />
+            <input v-model="member.role" type="text" class="team-input" placeholder="ex) 기획, 개발, 아트" />
+            <button type="button" class="team-del-btn" @click="removeTeamMember(i)" title="삭제">✕</button>
           </div>
         </div>
 
@@ -359,6 +350,7 @@ import { useAuthStore } from '../../stores/auth.js'
 import { useProfileStore } from '../../stores/profile.js'
 import { useProjectStore } from '../../stores/project.js'
 import { authApi } from '../../api/auth.js'
+import { teamMemberApi } from '../../api/teamMember.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -459,11 +451,45 @@ function isVideoUrl(url) {
   return url.startsWith('blob:') || /\.(mp4|mov|webm)$/i.test(url)
 }
 
-// ── 팀원 목록 (첫 번째 행 = 본인 name/role) ──
-const teamMembers = ref([{ name: '', role: '' }])
+// ── 팀원 목록 (API 연동) ──
+const teamMembers = ref([{ id: null, name: '', role: '' }])
+const deletedMemberIds = ref([])
+
+async function loadTeamMembers() {
+  try {
+    const data = await teamMemberApi.getAll()
+    teamMembers.value = data.length > 0 ? data : [{ id: null, name: '', role: '' }]
+  } catch {
+    teamMembers.value = [{ id: null, name: '', role: '' }]
+  }
+}
 
 function addTeamMember() {
-  teamMembers.value.push({ name: '', role: '' })
+  teamMembers.value.push({ id: null, name: '', role: '' })
+}
+
+function removeTeamMember(index) {
+  const member = teamMembers.value[index]
+  if (member.id) deletedMemberIds.value.push(member.id)
+  teamMembers.value.splice(index, 1)
+  if (teamMembers.value.length === 0) teamMembers.value.push({ id: null, name: '', role: '' })
+}
+
+async function syncTeamMembers() {
+  for (const id of deletedMemberIds.value) {
+    await teamMemberApi.delete(id)
+  }
+  deletedMemberIds.value = []
+  for (let i = 0; i < teamMembers.value.length; i++) {
+    const m = teamMembers.value[i]
+    if (!m.name.trim()) continue
+    if (m.id) {
+      await teamMemberApi.update(m.id, { name: m.name, role: m.role, sortOrder: i })
+    } else {
+      const created = await teamMemberApi.create({ name: m.name, role: m.role, sortOrder: i })
+      teamMembers.value[i] = created
+    }
+  }
 }
 
 // ── 프로젝트 상태 ──
@@ -541,8 +567,6 @@ let autoSaveTimer = null
 
 async function autoSave() {
   if (saving.value) return
-  profileForm.name = teamMembers.value[0]?.name || ''
-  profileForm.role = teamMembers.value[0]?.role || ''
   try {
     await profileStore.updateProfile({ ...profileForm })
     autoSaveMsg.value = '자동 저장됨'
@@ -556,11 +580,12 @@ onMounted(async () => {
     await profileStore.fetchMyProfile()
     if (profileStore.profile) {
       Object.assign(profileForm, profileStore.profile)
-      teamMembers.value[0].name = profileStore.profile.name || ''
-      teamMembers.value[0].role = profileStore.profile.role || ''
     }
   } catch {}
-  await projectStore.fetchMyProjects()
+  await Promise.all([
+    projectStore.fetchMyProjects(),
+    loadTeamMembers(),
+  ])
   autoSaveTimer = setInterval(autoSave, 60000)
   document.addEventListener('click', onDocumentClick)
 })
@@ -574,11 +599,11 @@ onBeforeUnmount(() => {
 async function saveProfile() {
   saving.value = true
   saveSuccess.value = false
-  // 첫 번째 행(본인 정보)을 profileForm에 반영
-  profileForm.name = teamMembers.value[0]?.name || ''
-  profileForm.role = teamMembers.value[0]?.role || ''
   try {
-    await profileStore.updateProfile({ ...profileForm })
+    await Promise.all([
+      profileStore.updateProfile({ ...profileForm }),
+      syncTeamMembers(),
+    ])
     saveSuccess.value = true
     setTimeout(() => { saveSuccess.value = false }, 3000)
   } finally {
@@ -1094,37 +1119,37 @@ async function deleteProject() {
 }
 
 /* ── 팀원 섹션 ── */
-.team-section {
-  display: grid;
-  grid-template-columns: 382px 382px;
-  gap: 16px;
+.team-list {
   margin-bottom: 48px;
+  max-width: 807px;
 }
 
-.team-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
+.team-list-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 32px;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .team-col-title {
-  width: 382px;
   font-family: 'Roboto', sans-serif;
   font-size: 28px;
   font-weight: 400;
   line-height: 36px;
   color: #1E1E1E;
   margin: 0;
-  align-self: stretch;
 }
 
-.team-input-wrap {
-  width: 100%;
+.team-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 32px;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
 .team-input {
-  width: 382px;
+  width: 100%;
   height: 56px;
   padding: 12px 16px;
   background: #FFFFFF;
@@ -1142,6 +1167,27 @@ async function deleteProject() {
 
 .team-input:focus {
   border-color: #6750A4;
+}
+
+.team-del-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid #D9D9D9;
+  border-radius: 6px;
+  color: #9E9E9E;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.team-del-btn:hover {
+  border-color: #ff6584;
+  color: #ff6584;
 }
 
 /* ── 팀원 추가 버튼 ── */
