@@ -343,7 +343,7 @@
         <h3 class="unsaved-modal-title">저장하지 않은 변경사항이 있습니다</h3>
         <p class="unsaved-modal-desc">이동하면 변경사항이 사라집니다.</p>
         <div class="unsaved-modal-actions">
-          <button class="unsaved-btn-discard" @click="confirmDiscard">버리기</button>
+          <button class="unsaved-btn-discard" @click="confirmDiscard">이동하기</button>
           <button class="unsaved-btn-keep" @click="cancelDiscard">계속 편집</button>
         </div>
       </div>
@@ -514,6 +514,7 @@ function checkUnsaved(action) {
 }
 function confirmDiscard() {
   showUnsavedModal.value = false
+  Object.assign(projectForm, { ...savedProjectSnapshot })
   pendingAction?.()
   pendingAction = null
 }
