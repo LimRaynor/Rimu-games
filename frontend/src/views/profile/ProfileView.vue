@@ -17,7 +17,7 @@
           :key="tab.key"
           class="nav-pill"
           :class="{ active: activeTab === tab.key }"
-          @click="activeTab = tab.key"
+          @click="tryChangeTab(tab.key)"
         >{{ tab.label }}</button>
       </nav>
 
@@ -27,6 +27,12 @@
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
             <polyline points="17 21 17 13 7 13 7 21"/>
             <polyline points="7 3 7 8 15 8"/>
+          </svg>
+        </button>
+        <button class="icon-sq-btn" @click="router.push('/')" title="나가기">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
           </svg>
         </button>
         <button class="icon-sq-btn" @click="handleLogout" title="로그아웃">
@@ -155,7 +161,12 @@
 
       <!-- Tab: 프로젝트 -->
       <div v-if="activeTab === 'project'" class="tab-pane">
-        <h2 class="tab-title">프로젝트</h2>
+        <div class="tab-title-row">
+          <h2 class="tab-title">프로젝트</h2>
+          <span v-if="selectedProject && projectStore.projects.length > 0" class="project-count">
+            {{ selectedProjectIndex }}/{{ projectStore.projects.length }}
+          </span>
+        </div>
 
         <div class="project-strip">
           <div
@@ -163,7 +174,7 @@
             :key="project.id"
             class="project-card-thumb"
             :class="{ selected: selectedProject?.id === project.id }"
-            @click="selectProject(project)"
+            @click="trySelectProject(project)"
           >
             <div class="thumb-img">
               <img v-if="project.thumbnailUrl" :src="project.thumbnailUrl" alt="thumb" />
@@ -171,7 +182,7 @@
             </div>
             <p class="thumb-title">{{ project.title }}</p>
           </div>
-          <button class="add-card-btn" @click="newProject" title="프로젝트 추가">
+          <button class="add-card-btn" @click="tryNewProject" title="프로젝트 추가">
             <span>+</span>
           </button>
         </div>
@@ -181,7 +192,7 @@
           <form @submit.prevent="saveProject">
             <div class="form-row-2">
               <div class="field-group">
-                <label class="field-label">이름 *</label>
+                <label class="field-label">이름</label>
                 <input v-model="projectForm.title" type="text" placeholder="프로젝트 이름" class="field-input" required />
               </div>
               <div class="field-group">
@@ -194,8 +205,21 @@
               <input v-model="projectForm.techStack" type="text" placeholder="ex) Unity, C#, 2D 플랫포머" class="field-input" />
             </div>
             <div class="field-group">
-              <label class="field-label">세부설명</label>
-              <textarea v-model="projectForm.description" rows="4" placeholder="프로젝트를 자세히 설명해주세요" class="field-input"></textarea>
+              <div class="md-editor-header">
+                <label class="field-label">세부설명</label>
+                <div class="md-tab-group">
+                  <button type="button" class="md-tab" :class="{ active: !descPreview }" @click="descPreview = false">편집</button>
+                  <button type="button" class="md-tab" :class="{ active: descPreview }" @click="descPreview = true">미리보기</button>
+                </div>
+              </div>
+              <textarea
+                v-if="!descPreview"
+                v-model="projectForm.description"
+                rows="8"
+                placeholder="내용 작성"
+                class="field-input md-textarea"
+              ></textarea>
+              <div v-else class="md-preview" v-html="descHtml"></div>
             </div>
             <div class="form-row-2">
               <div class="field-group">
@@ -247,11 +271,24 @@
         </div>
       </div>
     </main>
+
+    <!-- ── 미저장 경고 모달 ── -->
+    <div v-if="showUnsavedModal" class="unsaved-backdrop" @click.self="cancelDiscard">
+      <div class="unsaved-modal">
+        <h3 class="unsaved-modal-title">저장하지 않은 변경사항이 있습니다</h3>
+        <p class="unsaved-modal-desc">이동하면 변경사항이 사라집니다.</p>
+        <div class="unsaved-modal-actions">
+          <button class="unsaved-btn-discard" @click="confirmDiscard">버리기</button>
+          <button class="unsaved-btn-keep" @click="cancelDiscard">계속 편집</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, reactive, computed } from 'vue'
+import { marked } from 'marked'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
 import { useProfileStore } from '../../stores/profile.js'
@@ -357,6 +394,12 @@ const selectedProject = ref(null)
 const isNewProject = ref(false)
 const projectSaving = ref(false)
 const showProjectForm = computed(() => selectedProject.value !== null || isNewProject.value)
+const selectedProjectIndex = computed(() => {
+  if (isNewProject.value) return projectStore.projects.length + 1
+  if (!selectedProject.value) return '-'
+  const idx = projectStore.projects.findIndex(p => p.id === selectedProject.value.id)
+  return idx === -1 ? '-' : idx + 1
+})
 
 const projectForm = reactive({
   title: '',
@@ -367,6 +410,53 @@ const projectForm = reactive({
   repoUrl: '',
   thumbnailUrl: '',
 })
+
+// ── 세부설명 마크다운 ──
+const descPreview = ref(false)
+const descHtml = computed(() => marked.parse(projectForm.description || ''))
+
+// ── 미저장 경고 모달 ──
+const savedProjectSnapshot = reactive({
+  title: '', description: '', techStack: '', status: '',
+  projectUrl: '', repoUrl: '', thumbnailUrl: '',
+})
+const isDirty = computed(() => {
+  if (!showProjectForm.value) return false
+  return Object.keys(projectForm).some(k => projectForm[k] !== savedProjectSnapshot[k])
+})
+const showUnsavedModal = ref(false)
+let pendingAction = null
+
+function checkUnsaved(action) {
+  if (isDirty.value) {
+    pendingAction = action
+    showUnsavedModal.value = true
+  } else {
+    action()
+  }
+}
+function confirmDiscard() {
+  showUnsavedModal.value = false
+  pendingAction?.()
+  pendingAction = null
+}
+function cancelDiscard() {
+  showUnsavedModal.value = false
+  pendingAction = null
+}
+function tryChangeTab(key) {
+  if (activeTab.value === 'project') {
+    checkUnsaved(() => { activeTab.value = key })
+  } else {
+    activeTab.value = key
+  }
+}
+function trySelectProject(project) {
+  checkUnsaved(() => selectProject(project))
+}
+function tryNewProject() {
+  checkUnsaved(() => newProject())
+}
 
 // ── 자동 저장 ──
 let autoSaveTimer = null
@@ -431,7 +521,7 @@ async function handleLogout() {
 function selectProject(project) {
   isNewProject.value = false
   selectedProject.value = project
-  Object.assign(projectForm, {
+  const data = {
     title: project.title || '',
     description: project.description || '',
     techStack: project.techStack || '',
@@ -439,7 +529,9 @@ function selectProject(project) {
     projectUrl: project.projectUrl || '',
     repoUrl: project.repoUrl || '',
     thumbnailUrl: project.thumbnailUrl || '',
-  })
+  }
+  Object.assign(projectForm, data)
+  Object.assign(savedProjectSnapshot, data)
 }
 
 // ── 프로젝트: 새로 만들기 ──
@@ -447,6 +539,7 @@ function newProject() {
   selectedProject.value = null
   isNewProject.value = true
   Object.keys(projectForm).forEach(k => { projectForm[k] = '' })
+  Object.keys(savedProjectSnapshot).forEach(k => { savedProjectSnapshot[k] = '' })
 }
 
 // ── 프로젝트: 취소 ──
@@ -467,6 +560,7 @@ async function saveProject() {
       const updated = await projectStore.updateProject(selectedProject.value.id, { ...projectForm })
       selectedProject.value = updated
     }
+    Object.assign(savedProjectSnapshot, { ...projectForm })
   } catch (e) {
     console.error('프로젝트 저장 실패:', e)
   } finally {
@@ -985,12 +1079,26 @@ async function deleteProject() {
 }
 
 /* ── 프로젝트/연락처 탭 공통 필드 ── */
+.tab-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
 .tab-title {
   font-family: 'Roboto', sans-serif;
   font-size: 28px;
   font-weight: 400;
   color: #1E1E1E;
-  margin-bottom: 40px;
+  margin: 0;
+}
+
+.project-count {
+  font-family: 'Roboto', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: #9E9E9E;
 }
 
 .field-group {
@@ -1186,4 +1294,151 @@ textarea.field-input {
   font-family: 'Roboto', sans-serif;
   font-size: 16px;
 }
+
+/* ── 마크다운 에디터 ── */
+.md-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.md-tab-group {
+  display: flex;
+  gap: 2px;
+  background: #F2F2F7;
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.md-tab {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-family: 'Roboto', sans-serif;
+  font-size: 13px;
+  color: #757575;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.md-tab.active {
+  background: #FFFFFF;
+  color: #1E1E1E;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.md-textarea {
+  resize: vertical;
+  min-height: 160px;
+  font-family: 'Roboto Mono', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.md-preview {
+  min-height: 160px;
+  padding: 14px 18px;
+  border: 1px solid #D9D9D9;
+  border-radius: 8px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #1E1E1E;
+  background: #FAFAFA;
+}
+
+.md-preview :deep(h1),
+.md-preview :deep(h2),
+.md-preview :deep(h3) {
+  font-weight: 600;
+  margin: 12px 0 6px;
+}
+
+.md-preview :deep(p) { margin: 6px 0; }
+
+.md-preview :deep(ul),
+.md-preview :deep(ol) {
+  padding-left: 20px;
+  margin: 6px 0;
+}
+
+.md-preview :deep(code) {
+  background: #F2F2F7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.md-preview :deep(strong) { font-weight: 600; }
+
+/* ── 미저장 경고 모달 ── */
+.unsaved-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.unsaved-modal {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 36px 40px;
+  width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.unsaved-modal-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1E1E1E;
+  margin: 0;
+}
+
+.unsaved-modal-desc {
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  color: #757575;
+  margin: 0;
+}
+
+.unsaved-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.unsaved-btn-discard {
+  padding: 10px 24px;
+  background: transparent;
+  color: #ff6584;
+  border: 1px solid #ff6584;
+  border-radius: 8px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.unsaved-btn-discard:hover { opacity: 0.75; }
+
+.unsaved-btn-keep {
+  padding: 10px 24px;
+  background: #6750A4;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Roboto', sans-serif;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.unsaved-btn-keep:hover { opacity: 0.85; }
 </style>
