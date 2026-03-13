@@ -307,23 +307,18 @@
       </div>
 
       <!-- Tab: 연락처 -->
-      <div v-if="activeTab === 'contact'" class="tab-pane">
-        <h2 class="tab-title">연락처</h2>
-        <div class="field-group">
-          <label class="field-label">공개 이메일</label>
-          <input v-model="profileForm.email" type="email" placeholder="공개할 이메일 주소" class="field-input" />
+      <div v-if="activeTab === 'contact'" class="tab-pane tab-pane--contact">
+        <div class="input-field contact-field">
+          <label class="input-label">Email</label>
+          <input v-model="profileForm.email" type="email" class="input-box" placeholder="" />
         </div>
-        <div class="field-group">
-          <label class="field-label">GitHub URL</label>
-          <input v-model="profileForm.githubUrl" type="url" placeholder="https://github.com/..." class="field-input" />
+        <div class="input-field contact-field">
+          <label class="input-label">Call</label>
+          <input v-model="profileForm.websiteUrl" type="text" class="input-box" placeholder="" />
         </div>
-        <div class="field-group">
-          <label class="field-label">개인 웹사이트</label>
-          <input v-model="profileForm.websiteUrl" type="url" placeholder="https://..." class="field-input" />
-        </div>
-        <div class="field-group">
-          <label class="field-label">Discord 태그</label>
-          <input v-model="profileForm.discordTag" type="text" placeholder="username#1234" class="field-input" />
+        <div class="input-field contact-field">
+          <label class="input-label">Discord</label>
+          <input v-model="profileForm.discordTag" type="text" class="input-box" placeholder="" />
         </div>
       </div>
     </main>
@@ -1213,19 +1208,22 @@ async function deleteProject() {
   background: #c5c5c5;
 }
 
-/* ── 연락처 탭 필드 ── */
+/* ── 연락처 탭 ── */
+.tab-pane--contact {
+  padding-top: 51px;
+}
+
+.contact-field {
+  width: 394px;
+  margin-bottom: 40px;
+}
+
+/* ── 프로젝트 탭 필드 (마크다운/GitHub) ── */
 .field-group {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-bottom: 28px;
-}
-
-.field-label {
-  font-family: 'Roboto', sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  color: #4A4A4A;
 }
 
 .field-input {
