@@ -4,6 +4,9 @@
 팀원들이 로그인 후 자신의 프로필(Basic Info, Project, Contact)을 등록하면,
 메인 대시보드에서 팀 전체 소개를 확인할 수 있습니다.
 
+## figma
+https://www.figma.com/design/bvpKANAFP9FWYeoN4z0PpL/%ED%8C%80-%EC%86%8C%EA%B0%9C?node-id=0-1&t=yM3gSAKQjc3ONiq5-1
+
 ---
 
 ## 기술 스택
